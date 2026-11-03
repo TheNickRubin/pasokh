@@ -1,0 +1,20 @@
+{
+  "name": "pasokh",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A forgiving, explainable answer checker for people learning Persian",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.ts",
+    "typecheck": "tsc",
+    "pasokh": "node --disable-warning=ExperimentalWarning src/cli.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^7.0.2"
+  }
+}
