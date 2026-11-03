@@ -3,19 +3,19 @@ import assert from 'node:assert/strict';
 import { checkAnswer, type CheckResult, type NoteCode } from '../src/check.ts';
 
 // Look-alike and invisible characters, spelled out so a reader can tell them apart.
-const ARABIC_YEH = 'ي';
-const ALEF_MAKSURA = 'ى';
-const ARABIC_KAF = 'ك';
-const ZWNJ = '‌';
-const RLM = '‏';
-const ZWSP = '​';
-const KASRA = 'ِ';
-const TATWEEL = 'ـ';
-const MADDA_ABOVE = 'ٓ';
+const ARABIC_YEH = '\u064A';
+const ALEF_MAKSURA = '\u0649';
+const ARABIC_KAF = '\u0643';
+const ZWNJ = '\u200C';
+const RLM = '\u200F';
+const ZWSP = '\u200B';
+const KASRA = '\u0650';
+const TATWEEL = '\u0640';
+const MADDA_ABOVE = '\u0653';
 const PERSIAN_QUESTION_MARK = '؟';
-const KEHEH_INITIAL_FORM = 'ﮐ';
+const KEHEH_INITIAL_FORM = '\uFB90';
 // "kitab" written in Arabic presentation forms: KAF INITIAL, TEH MEDIAL, ALEF FINAL, BEH ISOLATED.
-const KITAB_PRESENTATION_FORMS = 'ﻛﺘﺎﺏ';
+const KITAB_PRESENTATION_FORMS = '\uFEDB\uFE98\uFE8E\uFE8F';
 
 const MIRAVAM = `می${ZWNJ}روم`; // "I go", spelled with a half-space
 
@@ -107,8 +107,8 @@ describe('accepted', () => {
   });
 
   it('compares Persian, Arabic-Indic and ASCII digits by value', () => {
-    assertAccepted('۲۰', '20', ['digits']);
-    assertAccepted('٢٠', '۲۰', ['digits']);
+    assertAccepted('\u06F2\u06F0', '20', ['digits']);
+    assertAccepted('\u0662\u0660', '\u06F2\u06F0', ['digits']);
   });
 
   it('ignores punctuation at the edges', () => {

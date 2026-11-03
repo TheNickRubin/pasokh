@@ -43,21 +43,21 @@ interface Step {
 // Format characters that never change the meaning of an answer: soft hyphen, Arabic letter mark,
 // zero-width space, zero-width joiner, LRM/RLM, bidi embeddings and isolates, word joiner, BOM.
 // ZWNJ (U+200C) is deliberately absent: it is part of Persian spelling and is handled by the spacing step.
-const INVISIBLE = /[­؜​‍‎‏‪-‮⁠⁦-⁩﻿]/g;
+const INVISIBLE = /[\u00AD\u061C\u200B\u200D\u200E\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]/g;
 // U+0649 ARABIC LETTER ALEF MAKSURA and U+064A ARABIC LETTER YEH.
-const ARABIC_YEH = /[ىي]/g;
-const PERSIAN_YEH = 'ی';
+const ARABIC_YEH = /[\u0649\u064A]/g;
+const PERSIAN_YEH = '\u06CC';
 // U+0643 ARABIC LETTER KAF.
-const ARABIC_KAF = /ك/g;
-const PERSIAN_KAF = 'ک';
+const ARABIC_KAF = /\u0643/g;
+const PERSIAN_KAF = '\u06A9';
 // U+064B..U+0652 (fathatan to sukun, including shadda) and U+0670 superscript alef.
-// Madda and hamza (U+0653..U+0655) are not included: they distinguish letters such as آ.
-const HARAKAT = /[ً-ْٰ]/g;
-const TATWEEL = /ـ/g;
+// Madda and hamza (U+0653..U+0655) are not included: they distinguish letters such as alef madda (U+0622).
+const HARAKAT = /[\u064B-\u0652\u0670]/g;
+const TATWEEL = /\u0640/g;
 // Arabic-Indic (U+0660..U+0669) and Extended Arabic-Indic, i.e. Persian (U+06F0..U+06F9), digits.
-const EASTERN_DIGIT = /[٠-٩۰-۹]/g;
+const EASTERN_DIGIT = /[\u0660-\u0669\u06F0-\u06F9]/g;
 const EDGE_PUNCTUATION = /^[\p{P}\s]+|[\p{P}\s]+$/gu;
-const SEPARATORS = /[\s‌]/gu;
+const SEPARATORS = /[\s\u200C]/gu;
 const WHITESPACE_RUN = /\s+/gu;
 
 function toAsciiDigits(text: string): string {
@@ -82,12 +82,12 @@ const STEPS: readonly Step[] = [
   },
   {
     code: 'arabic-yeh',
-    message: 'Arabic yeh (ي or ى) was read as Persian ی. Persian spelling uses ی.',
+    message: 'Arabic yeh (\u064A or \u0649) was read as Persian \u06CC. Persian spelling uses \u06CC.',
     apply: (text) => text.replace(ARABIC_YEH, PERSIAN_YEH),
   },
   {
     code: 'arabic-kaf',
-    message: 'Arabic kaf (ك) was read as Persian ک. Persian spelling uses ک.',
+    message: 'Arabic kaf (\u0643) was read as Persian \u06A9. Persian spelling uses \u06A9.',
     apply: (text) => text.replace(ARABIC_KAF, PERSIAN_KAF),
   },
   {
@@ -97,12 +97,12 @@ const STEPS: readonly Step[] = [
   },
   {
     code: 'tatweel',
-    message: 'The decorative stretching character (tatweel, ـ) was ignored.',
+    message: 'The decorative stretching character (tatweel, \u0640) was ignored.',
     apply: (text) => text.replace(TATWEEL, ''),
   },
   {
     code: 'digits',
-    message: 'Digits were compared by value, so ۲, ٢ and 2 count as the same.',
+    message: 'Digits were compared by value, so \u06F2, \u0662 and 2 count as the same.',
     apply: toAsciiDigits,
   },
   {
@@ -113,7 +113,7 @@ const STEPS: readonly Step[] = [
   {
     code: 'spacing',
     message:
-      'Spacing differs. Check where Persian uses a space, a half-space (ZWNJ) or no break, as in می‌روم.',
+      'Spacing differs. Check where Persian uses a space, a half-space (ZWNJ) or no break, as in \u0645\u06CC\u200C\u0631\u0648\u0645.',
     apply: (text) => text.replace(SEPARATORS, ''),
   },
 ];

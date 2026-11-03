@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const CLI = fileURLToPath(new URL('../src/cli.ts', import.meta.url));
-const ARABIC_KAF = 'ك';
+const ARABIC_KAF = '\u0643';
 
 function pasokh(...args: string[]) {
   return spawnSync(process.execPath, ['--disable-warning=ExperimentalWarning', CLI, ...args], {
