@@ -44,6 +44,7 @@ class Job:
         self.checkout = self.out / "checkout"
         self.count = 0
         self.pr = None
+        self.stdout_available = True
         self.out.mkdir(parents=True, exist_ok=False)
 
     def save(self, name: str, data: object) -> None:
@@ -53,7 +54,23 @@ class Job:
         item = {"at": utc(), "state": state, **details}
         with (self.out / "events.jsonl").open("a") as stream:
             stream.write(json.dumps(item) + "\n")
-        print(json.dumps(item), flush=True)
+        if self.stdout_available:
+            try:
+                print(json.dumps(item), flush=True)
+            except (OSError, ValueError):
+                # A detached terminal/pipe must not change the job's outcome or
+                # interrupt its evidence writes. Avoid retrying the failed sink.
+                self.stdout_available = False
+                try:
+                    sink = os.open(os.devnull, os.O_WRONLY)
+                    try:
+                        os.dup2(sink, sys.stdout.fileno())
+                    finally:
+                        os.close(sink)
+                except (OSError, ValueError):
+                    pass
+                # Redirecting the descriptor also makes Python's final buffered
+                # stdout flush harmless instead of replacing our exit code with 120.
 
     def run(self, command: list[str], *, cwd: Path = ROOT, timeout: int = 60,
             input_text: str | None = None, check: bool = True) -> str:
@@ -230,10 +247,10 @@ class Job:
                 raise Stop("Agent could not confirm a completed Qodo review")
             changes = self.verify_scope()
             if not changes and result.get("status") == "ready":
-                self.event("ready_for_human", pr=url, head=sha, repair_cycles=cycle,
-                           summary=result["summary"], merged=False)
                 self.save("result.json", {"status": "ready_for_human", "pr": url, "head": sha,
                                            "repair_cycles": cycle, "merged": False})
+                self.event("ready_for_human", pr=url, head=sha, repair_cycles=cycle,
+                           summary=result["summary"], merged=False)
                 return
             if cycle == 2:
                 raise Stop("Two repair cycles exhausted; remaining edits retained for human review")
@@ -274,9 +291,9 @@ def main() -> int:
         try:
             job.execute()
         except (Stop, OSError, ValueError, KeyboardInterrupt) as error:
-            job.event("needs_human", reason=str(error), merged=False)
             job.save("result.json", {"status": "needs_human", "reason": str(error),
                                      "pr": job.pr, "merged": False})
+            job.event("needs_human", reason=str(error), merged=False)
             return 2
     return 0
 

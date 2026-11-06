@@ -66,6 +66,12 @@ local edits and any opened PR remain intact. Do not relaunch blindly: inspect
 the retained evidence first and choose a fresh run directory and branch only
 after deciding how to handle the existing work.
 
+Terminal output is best effort: a closed output pipe does not interrupt the
+job or its evidence writes. Final results are saved before the terminal event
+is emitted. This does not protect against process termination or filesystem
+failure; running the process under a suitable supervisor is still necessary
+if it must survive its terminal closing.
+
 ## Validation status
 
 Syntax and argument validation can be checked without scheduling a job:
@@ -73,7 +79,17 @@ Syntax and argument validation can be checked without scheduling a job:
 ```sh
 python3 -c 'import ast,pathlib; ast.parse(pathlib.Path("tools/run-ticket.py").read_text())'
 python3 tools/run-ticket.py --help
+python3 -B -m unittest discover -s tools -p 'test_run_ticket.py' -v
 ```
+
+The offline regression tests close the stdout pipe of a real child process.
+They verify that both a final escalation and an earlier progress event preserve
+`result.json`, the actual stop reason, the event log and exit status 2. They
+stub the workload and repository lookup, so no agent, timer, Git mutation or
+GitHub call runs. These tests reproduced a failure where `BrokenPipeError`
+escaped from the escalation logger before the result was saved. That proves
+the failure mechanism; it does not establish the exact cause of any historical
+run without its process error output. Historical evidence is left intact.
 
 Only an actual trigger/run and its retained evidence demonstrate the Day 4
 workflow. Writing or syntax-checking this runner alone does not complete the
