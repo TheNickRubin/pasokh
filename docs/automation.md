@@ -79,11 +79,23 @@ require a human decision before another invocation.
   other editors or Git clients; coordinate with them before launch.
 - Changes outside the explicit source/test/README allowlist stop before commit
   or push. Branch changes and symlinks in permitted files also stop the run.
-- Claude runs with customizations/MCP disabled, noninteractive deny-on-prompt
-  permissions, file tools and a short list of local check/read commands. The
-  host owns Git mutations and GitHub writes. Permission denial escalates; the
-  runner does not retry with bypass permissions. These are workflow controls,
-  not an operating-system sandbox.
+- Claude runs with customizations/MCP disabled and noninteractive
+  deny-on-prompt permissions. Each allowed source file gets one exact absolute
+  `Edit(//...)` rule; there are no blanket Edit or Write grants. Claude's
+  [documented permission syntax](https://code.claude.com/docs/en/permissions#read-and-edit)
+  uses Edit rules for **both** editing and writing files; `Write(path)` does not
+  enforce path scope. Git metadata paths also have Read/Edit denials. Only the
+  two exact npm check commands are explicitly approved shell commands.
+- Host Git calls disable hooks and filesystem-monitor commands. Before every
+  push, the runner reads the effective push URLs, including pushurl and URL
+  rewrites, and requires one expected pasokh destination. Review cycles validate
+  the live PR's open state, repository, branch, base and exact SHA before review,
+  after polling, before a correction push, after that push, and before readiness.
+  A concurrent change escalates instead of reusing review for an old head.
+- These remain workflow controls, not an operating-system sandbox. npm tests
+  execute task code and can perform indirect file/process operations. Permission
+  denial never triggers a bypass retry. Live PR checks are snapshots, not an
+  atomic lock against another contributor changing the PR after the check.
 - Each Claude phase has a ten-minute timeout (configurable from 30 to 900
   seconds). Checks and network commands have independent timeouts. Review
   polling has a five-minute limit (configurable down to 15 seconds).
@@ -134,6 +146,15 @@ Additional offline tests cover busy/stale/unattributed review filtering,
 existing current-head review reuse, progress polling, resume mismatches, and
 reuse of the existing checkout/PR with current ticket comments and unchanged
 original evidence. They do not establish that live Qodo or Claude is working.
+Publication regressions also exercise effective Git pushurl/URL rewrites in a
+synthetic local repository, exact file-tool permissions, hook-disabling command
+construction, and remote-head changes during triage and before correction push.
+The synthetic repository tests never commit or contact a remote.
+A bounded live Claude probe also verified the file-tool rules: Edit and Write
+both changed the one permitted dummy file, while writes to an unlisted dummy
+file and dummy `.git/config` were denied and those files remained unchanged.
+The probe finished in 20 seconds without retries or permission bypass. It
+tests built-in file-tool enforcement, not containment of npm test code.
 
 Only an actual trigger/run and its retained evidence demonstrate the Day 4
 workflow. Writing or syntax-checking this runner alone does not complete the

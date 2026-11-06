@@ -2,6 +2,7 @@
 from pathlib import Path
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -180,6 +181,90 @@ class ResumeTests(unittest.TestCase):
             self.assertEqual(job.pr, 8)
             self.assertEqual(json.loads((job.out / "ticket.json").read_text()), current)
             self.assertEqual(before, {path.name: path.read_bytes() for path in source.iterdir() if path.is_file()})
+
+
+class PublicationBoundaryTests(unittest.TestCase):
+    def test_effective_pushurl_and_url_rewrite_cannot_redirect_publication(self):
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.dict(os.environ, {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}):
+            job = runner.Job(SimpleNamespace(artifacts=Path(directory) / "run"))
+            subprocess.run(["git", "init", "-q", str(job.checkout)], check=True)
+
+            def config(key, value):
+                subprocess.run(["git", "-C", str(job.checkout), "config", key, value], check=True)
+
+            config("remote.origin.url", f"https://github.com/{runner.REPO}.git")
+            job.verify_push_destination()
+            config("remote.origin.pushurl", "https://example.invalid/stolen.git")
+            with self.assertRaisesRegex(runner.Stop, "push destination"):
+                job.verify_push_destination()
+            subprocess.run(["git", "-C", str(job.checkout), "config", "--unset", "remote.origin.pushurl"], check=True)
+            config("url.https://example.invalid/.pushInsteadOf", "https://github.com/")
+            with self.assertRaisesRegex(runner.Stop, "push destination"):
+                job.verify_push_destination()
+
+    def test_agent_uses_exact_edit_rules_for_both_file_tools_without_blanket_grants(self):
+        with tempfile.TemporaryDirectory() as directory:
+            job = runner.Job(SimpleNamespace(artifacts=Path(directory) / "run",
+                                             allow_file=["src/cli.ts", "test/cli.test.ts"], agent_timeout=30))
+            job.checkout.mkdir()
+            metadata = Path(directory).resolve() / "metadata"
+            response = json.dumps({"structured_output": {"status": "ready", "review_complete": False,
+                                                           "summary": "offline fixture"}})
+            with patch.object(job, "git", return_value=str(metadata)), \
+                    patch.object(job, "run", return_value=response) as command, patch.object(job, "verify_scope"):
+                job.agent("Offline fixture", "permission-test")
+            argv = command.call_args.args[0]
+            allows = argv[argv.index("--allowedTools") + 1:argv.index("--disallowedTools")]
+            self.assertNotIn("Edit", allows)
+            self.assertNotIn("Write", allows)
+            self.assertEqual([rule for rule in allows if rule.startswith("Edit(")],
+                             [f"Edit(/{job.checkout}/src/cli.ts)", f"Edit(/{job.checkout}/test/cli.test.ts)"])
+            self.assertFalse(any(rule.startswith("Write(") for rule in allows))
+            self.assertIn(f"Read(/{metadata}/**)", argv)
+            self.assertIn(f"Edit(/{metadata}/**)", argv)
+
+    def test_host_git_commands_disable_hooks_and_fsmonitor(self):
+        with tempfile.TemporaryDirectory() as directory:
+            job = runner.Job(SimpleNamespace(artifacts=Path(directory) / "run"))
+            with patch.object(job, "run", return_value="") as command:
+                job.git("status", "--porcelain")
+            argv = command.call_args.args[0]
+            self.assertEqual(argv[:5], ["git", "-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false"])
+
+    def test_remote_change_after_triage_prevents_ready_result(self):
+        with tempfile.TemporaryDirectory() as directory:
+            args = SimpleNamespace(artifacts=Path(directory) / "run", branch="day-04/help", base="main",
+                                   allow_file=["src/cli.ts"], issue=5)
+            job = runner.Job(args)
+            job.pr = 8
+            pr = ResumeTests().valid_pr()
+            current = json.dumps(pr)
+            changed = json.dumps(pr | {"headRefOid": STALE})
+            issue = {"url": f"https://github.com/{runner.REPO}/issues/5"}
+            with patch.object(job, "git", return_value=SHA), \
+                    patch.object(job, "run", side_effect=[current, current, changed]), \
+                    patch.object(job, "request_review", return_value=[review()]), \
+                    patch.object(job, "agent", return_value={"status": "ready", "review_complete": True, "summary": "ok"}), \
+                    patch.object(job, "checks"), patch.object(job, "verify_scope", return_value=[]), \
+                    patch.object(job, "publish") as publish:
+                with self.assertRaisesRegex(runner.Stop, "current PR head"):
+                    job.review_loop(issue, SHA, pr["url"])
+                publish.assert_not_called()
+            self.assertFalse((job.out / "result.json").exists())
+
+    def test_remote_change_before_correction_push_prevents_push(self):
+        with tempfile.TemporaryDirectory() as directory:
+            args = SimpleNamespace(artifacts=Path(directory) / "run", branch="day-04/help", base="main")
+            job = runner.Job(args)
+            job.pr = 8
+            changed = json.dumps(ResumeTests().valid_pr() | {"headRefOid": STALE})
+            with patch.object(job, "verify_scope", return_value=["src/cli.ts"]), \
+                    patch.object(job, "git", return_value="c" * 40) as git, \
+                    patch.object(job, "run", return_value=changed):
+                with self.assertRaisesRegex(runner.Stop, "current PR head"):
+                    job.publish("offline correction", expected_pr_head=SHA)
+                self.assertFalse(any(call.args[0] == "push" for call in git.call_args_list))
 
 
 if __name__ == "__main__":
