@@ -74,6 +74,7 @@ describe('wrong', () => {
 
   it('keeps punctuation inside the answer significant', () => {
     assert.equal(checkAnswer('سلام، دوست', 'سلام دوست').verdict, 'wrong');
+    assert.equal(checkAnswer(`سلام${ZWNJ}،${ZWNJ}دوست`, 'سلام دوست').verdict, 'wrong');
   });
 });
 
@@ -115,6 +116,24 @@ describe('accepted', () => {
     assertAccepted('سلام!', 'سلام', ['punctuation']);
     assertAccepted('«سلام»', 'سلام', ['punctuation']);
     assertAccepted(`چطوری${PERSIAN_QUESTION_MARK}`, 'چطوری', ['punctuation']);
+  });
+
+  it('ignores edge punctuation surrounded by half-spaces in either answer', () => {
+    for (const variant of [
+      `سلام،${ZWNJ}`,
+      `${ZWNJ}،سلام`,
+      `${ZWNJ}«${ZWNJ}سلام${ZWNJ}»${ZWNJ}،${ZWNJ}`,
+    ]) {
+      assertAccepted(variant, 'سلام', ['punctuation', 'spacing']);
+      assertAccepted('سلام', variant, ['punctuation', 'spacing']);
+    }
+  });
+
+  it('attributes edge punctuation and half-spaces only to the needed rules', () => {
+    assertAccepted(`سلام،${ZWNJ}`, `سلام${ZWNJ}`, ['punctuation']);
+    assertAccepted(`${ZWNJ}،سلام`, `${ZWNJ}سلام`, ['punctuation']);
+    assertAccepted(`سلام${ZWNJ}`, 'سلام', ['spacing']);
+    assertAccepted(`${ZWNJ}سلام`, 'سلام', ['spacing']);
   });
 
   it('accepts a space or no break where the key has a half-space, with a spacing note', () => {
@@ -185,5 +204,6 @@ describe('answer keys', () => {
     assert.throws(() => checkAnswer('کتاب', PERSIAN_QUESTION_MARK), TypeError);
     assert.throws(() => checkAnswer('کتاب', '   '), TypeError);
     assert.throws(() => checkAnswer('کتاب', ['کتاب', '']), TypeError);
+    assert.throws(() => checkAnswer('کتاب', `${ZWNJ}،${ZWNJ}`), TypeError);
   });
 });
