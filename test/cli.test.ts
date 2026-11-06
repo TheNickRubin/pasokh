@@ -33,34 +33,93 @@ describe('cli', () => {
       assert.equal(help.stdout, usageError.stderr);
     });
 
-    it('wins over --json in either order and prints plain text, not JSON', () => {
+    it('is a help request only as the sole argument; otherwise one operand is a usage error', () => {
+      const helpText = pasokh('--help').stdout;
       for (const args of [
         ['--json', '--help'],
         ['--help', '--json'],
+        ['--help', '--'],
       ]) {
         const run = pasokh(...args);
-        const label = args.join(' ');
-        assert.equal(run.status, 0, label);
-        assert.match(run.stdout, /^usage: pasokh/, label);
-        assert.throws(() => JSON.parse(run.stdout), label);
+        const label = `pasokh ${args.join(' ')}`;
+        assert.equal(run.status, 2, label);
+        assert.equal(run.stdout, '', label);
+        assert.equal(run.stderr, helpText, label);
+      }
+    });
+
+    it('does not treat near-miss spellings of --help as a help request', () => {
+      for (const arg of ['-h', '--HELP', '--help=true', 'help']) {
+        const run = pasokh(arg);
+        assert.equal(run.status, 2, arg);
+        assert.equal(run.stdout, '', arg);
+        assert.match(run.stderr, /^usage: pasokh/, arg);
+      }
+    });
+
+    it('is not standalone beside an empty argument, which stays an invalid answer key', () => {
+      const run = pasokh('--help', '');
+      assert.equal(run.status, 2);
+      assert.equal(run.stdout, '');
+      assert.match(run.stderr, /^pasokh: answer key entry "" /);
+    });
+
+    it('keeps --help --help a plain-text exact comparison of two operands', () => {
+      const run = pasokh('--help', '--help');
+      assert.equal(run.status, 0);
+      assert.equal(run.stdout, 'verdict: exact\nmatched: --help\n');
+      assert.equal(run.stderr, '');
+    });
+
+    it('keeps a leading --help a typed answer that is wrong against other keys', () => {
+      for (const args of [
+        ['--help', 'کتاب', 'کتاب'],
+        ['--help', 'کتاب', 'کباب'],
+      ]) {
+        const run = pasokh(...args);
+        const label = `pasokh ${args.join(' ')}`;
+        assert.equal(run.status, 1, label);
+        assert.equal(run.stdout, 'verdict: wrong\n', label);
         assert.equal(run.stderr, '', label);
       }
     });
 
-    it('wins over answers given before the delimiter', () => {
-      const run = pasokh('--help', 'کتاب', 'کباب');
+    it('keeps --help an operand beside --json in either position and emits JSON', () => {
+      for (const args of [
+        ['--json', '--help', '--help'],
+        ['--help', '--json', '--help'],
+      ]) {
+        const run = pasokh(...args);
+        const label = `pasokh ${args.join(' ')}`;
+        assert.equal(run.status, 0, label);
+        assert.deepEqual(JSON.parse(run.stdout), { verdict: 'exact', matched: '--help', notes: [] }, label);
+        assert.equal(run.stderr, '', label);
+      }
+    });
+
+    it('still accepts a forgiven answer when --help is one of the answer keys', () => {
+      const run = pasokh('--json', `${ARABIC_KAF}تاب`, '--help', 'کتاب');
       assert.equal(run.status, 0);
-      assert.match(run.stdout, /^usage: pasokh/);
-      assert.doesNotMatch(run.stdout, /^verdict:/m);
+      const result = JSON.parse(run.stdout);
+      assert.equal(result.verdict, 'accepted');
+      assert.equal(result.matched, 'کتاب');
+      assert.deepEqual(
+        result.notes.map((note: { code: string }) => note.code),
+        ['arabic-kaf'],
+      );
       assert.equal(run.stderr, '');
     });
 
-    it('wins over literal operands after the delimiter', () => {
-      const run = pasokh('--help', '--', '--json', '--json');
-      assert.equal(run.status, 0);
-      assert.match(run.stdout, /^usage: pasokh/);
-      assert.doesNotMatch(run.stdout, /^verdict:/m);
-      assert.equal(run.stderr, '');
+    it('keeps --help before the delimiter a typed answer when literal operands follow', () => {
+      const wrong = pasokh('--help', '--', '--json', '--json');
+      assert.equal(wrong.status, 1);
+      assert.equal(wrong.stdout, 'verdict: wrong\n');
+      assert.equal(wrong.stderr, '');
+
+      const exact = pasokh('--help', '--', '--help');
+      assert.equal(exact.status, 0);
+      assert.equal(exact.stdout, 'verdict: exact\nmatched: --help\n');
+      assert.equal(exact.stderr, '');
     });
 
     it('compares literal --help operands after the delimiter as plain-text exact', () => {

@@ -43,9 +43,18 @@ npm run -s pasokh -- --help
 ```
 
 `--help` prints the usage text to stdout and exits 0, with nothing on stderr. It
-is an option anywhere before pasokh's `--` marker and wins over `--json` and over
-any answers, so `--json --help` prints plain-text help rather than JSON. Without
-`--help`, missing answers are still a usage error: the same text goes to stderr,
+is a help request only when it is the sole argument: `pasokh --help`. That is the
+only invocation whose result changed; before, a lone `--help` was one answer and
+so a usage error. In every other invocation `--help` is still an ordinary answer,
+as it always was:
+
+```sh
+npm run -s pasokh -- --help --help          # plain-text exact, not help
+npm run -s pasokh -- --help 'کتاب' 'کتاب'   # verdict: wrong, exit 1
+npm run -s pasokh -- --json --help          # one answer: usage error, exit 2
+```
+
+Missing answers are still a usage error: the same usage text goes to stderr,
 stdout stays empty and the exit status is 2.
 
 Use the CLI's `--` marker to keep option-like answers literal. The first marker
