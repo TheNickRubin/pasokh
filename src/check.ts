@@ -56,7 +56,8 @@ const HARAKAT = /[\u064B-\u0652\u0670]/g;
 const TATWEEL = /\u0640/g;
 // Arabic-Indic (U+0660..U+0669) and Extended Arabic-Indic, i.e. Persian (U+06F0..U+06F9), digits.
 const EASTERN_DIGIT = /[\u0660-\u0669\u06F0-\u06F9]/g;
-const EDGE_PUNCTUATION = /^[\p{P}\s]+|[\p{P}\s]+$/gu;
+// Half-spaces do not shield edge punctuation, but only the spacing step removes them.
+const EDGE_PUNCTUATION = /^[\p{P}\s\u200C]+|[\p{P}\s\u200C]+$/gu;
 const SEPARATORS = /[\s\u200C]/gu;
 const WHITESPACE_RUN = /\s+/gu;
 
@@ -108,7 +109,7 @@ const STEPS: readonly Step[] = [
   {
     code: 'punctuation',
     message: 'Punctuation at the start or end was ignored.',
-    apply: (text) => text.replace(EDGE_PUNCTUATION, ''),
+    apply: (text) => text.replace(EDGE_PUNCTUATION, (edge) => edge.replace(/\p{P}/gu, '')),
   },
   {
     code: 'spacing',
