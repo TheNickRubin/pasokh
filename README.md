@@ -41,6 +41,17 @@ npm run -s pasokh -- 'كتاب' 'کتاب'
 npm run -s pasokh -- --json 'میروم' 'می‌روم'
 ```
 
+Use the CLI's `--` marker to keep option-like answers literal. The first marker
+below belongs to npm; the second belongs to pasokh:
+
+```sh
+npm run -s pasokh -- -- '--json' '--json'          # plain-text exact
+npm run -s pasokh -- --json -- '--json' '--json'   # JSON exact
+```
+
+Everything after pasokh's first `--` is an answer operand, including further
+`--json` or `--` tokens. Invalid answer keys still produce a content error.
+
 ## What it forgives, and what it does not
 
 | Forgiven | Example | Note code |

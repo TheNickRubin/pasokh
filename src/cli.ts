@@ -1,13 +1,18 @@
 #!/usr/bin/env node
 import { checkAnswer } from './check.ts';
 
-const USAGE = `usage: pasokh [--json] <typed answer> <accepted answer> [more accepted answers...]
+const USAGE = `usage: pasokh [--json] [--] <typed answer> <accepted answer> [more accepted answers...]
 
 Exit status: 0 exact or accepted, 1 wrong, 2 usage error.`;
 
 function main(argv: readonly string[]): number {
-  const json = argv.includes('--json');
-  const args = argv.filter((arg) => arg !== '--json');
+  const delimiter = argv.indexOf('--');
+  const optionArgs = delimiter === -1 ? argv : argv.slice(0, delimiter);
+  const json = optionArgs.includes('--json');
+  const args = [
+    ...optionArgs.filter((arg) => arg !== '--json'),
+    ...(delimiter === -1 ? [] : argv.slice(delimiter + 1)),
+  ];
   const [typed, ...answerKey] = args;
   if (typed === undefined || answerKey.length === 0) {
     process.stderr.write(`${USAGE}\n`);
