@@ -13,6 +13,12 @@ function pasokh(...args: string[]) {
 }
 
 describe('cli', () => {
+  it('reports a symbol-only key as a content error, not a verdict', () => {
+    const run = pasokh('--json', '💥', '💥');
+    assert.equal(run.status, 2);
+    assert.equal(run.stdout, '');
+    assert.match(run.stderr, /^pasokh: answer key entry/);
+  });
   it('prints an accepted verdict with what it forgave and exits 0', () => {
     const run = pasokh(`${ARABIC_KAF}تاب`, 'کتاب');
     assert.equal(run.status, 0);

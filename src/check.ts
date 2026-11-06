@@ -172,8 +172,8 @@ export function checkAnswer(typed: string, answerKey: string | readonly string[]
     throw new TypeError('answer key must contain at least one answer');
   }
   for (const key of keys) {
-    if (typeof key !== 'string' || comparisonKey(key) === '') {
-      throw new TypeError(`answer key entry ${JSON.stringify(key)} is empty after normalization`);
+    if (typeof key !== 'string' || !/[\p{L}\p{N}]/u.test(comparisonKey(key))) {
+      throw new TypeError(`answer key entry ${JSON.stringify(key)} has no letters or numbers after normalization`);
     }
   }
 
