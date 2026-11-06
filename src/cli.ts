@@ -2,10 +2,22 @@
 import { checkAnswer } from './check.ts';
 
 const USAGE = `usage: pasokh [--json] [--] <typed answer> <accepted answer> [more accepted answers...]
+       pasokh --help
+
+Options:
+  --json  Print the result as JSON.
+  --help  Print this usage text to stdout and exit 0. Only as the sole argument.
+  --      End of options. Every later argument is an answer, even --json, --help or --.
 
 Exit status: 0 exact or accepted, 1 wrong, 2 usage error.`;
 
 function main(argv: readonly string[]): number {
+  // Help is standalone: only `pasokh --help` with no other argument. In every other invocation
+  // "--help" stays an ordinary answer operand, exactly as before help existed.
+  if (argv.length === 1 && argv[0] === '--help') {
+    process.stdout.write(`${USAGE}\n`);
+    return 0;
+  }
   const delimiter = argv.indexOf('--');
   const optionArgs = delimiter === -1 ? argv : argv.slice(0, delimiter);
   const json = optionArgs.includes('--json');

@@ -39,7 +39,23 @@ From the command line (exit status 0 for exact or accepted, 1 for wrong, 2 for u
 ```sh
 npm run -s pasokh -- 'كتاب' 'کتاب'
 npm run -s pasokh -- --json 'میروم' 'می‌روم'
+npm run -s pasokh -- --help
 ```
+
+`--help` prints the usage text to stdout and exits 0, with nothing on stderr. It
+is a help request only when it is the sole argument: `pasokh --help`. That is the
+only invocation whose result changed; before, a lone `--help` was one answer and
+so a usage error. In every other invocation `--help` is still an ordinary answer,
+as it always was:
+
+```sh
+npm run -s pasokh -- --help --help          # plain-text exact, not help
+npm run -s pasokh -- --help 'کتاب' 'کتاب'   # verdict: wrong, exit 1
+npm run -s pasokh -- --json --help          # one answer: usage error, exit 2
+```
+
+Missing answers are still a usage error: the same usage text goes to stderr,
+stdout stays empty and the exit status is 2.
 
 Use the CLI's `--` marker to keep option-like answers literal. The first marker
 below belongs to npm; the second belongs to pasokh:
@@ -47,10 +63,11 @@ below belongs to npm; the second belongs to pasokh:
 ```sh
 npm run -s pasokh -- -- '--json' '--json'          # plain-text exact
 npm run -s pasokh -- --json -- '--json' '--json'   # JSON exact
+npm run -s pasokh -- -- '--help' '--help'          # plain-text exact, not help
 ```
 
 Everything after pasokh's first `--` is an answer operand, including further
-`--json` or `--` tokens. Invalid answer keys still produce a content error.
+`--json`, `--help` or `--` tokens. Invalid answer keys still produce a content error.
 
 Compatibility note: the first bare `--` is now consumed as syntax. For example,
 `pasokh -- X X` compares `X` with `X`; older versions compared the literal `--`
