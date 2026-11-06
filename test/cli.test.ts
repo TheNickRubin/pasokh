@@ -102,6 +102,12 @@ describe('cli', () => {
     });
   });
 
+  it('consumes the first bare delimiter before ordinary operands', () => {
+    const run = pasokh('--', 'X', 'X');
+    assert.equal(run.status, 0);
+    assert.equal(run.stdout, 'verdict: exact\nmatched: X\n');
+    assert.equal(run.stderr, '');
+  });
   it('preserves literal --json answers after the option delimiter', () => {
     const run = pasokh('--', '--json', '--json');
     assert.equal(run.status, 0);
