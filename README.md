@@ -11,6 +11,56 @@
 
 Built during the [Qodo Software Factory Hackathon](https://hackathon.qodo.ai/) (November 2026), one reviewed pull request at a time.
 
+## Usage
+
+```ts
+import { checkAnswer } from './src/check.ts';
+
+checkAnswer('كتاب', 'کتاب');
+// {
+//   verdict: 'accepted',
+//   matched: 'کتاب',
+//   notes: [{ code: 'arabic-kaf', message: 'Arabic kaf (ك) was read as Persian ک. Persian spelling uses ک.' }]
+// }
+```
+
+The answer key can be one string or a list of acceptable answers. There are three verdicts:
+
+| Verdict | Meaning |
+|---|---|
+| `exact` | Same text, ignoring Unicode composition and extra whitespace. |
+| `accepted` | Same answer once the variants below are forgiven. `notes` says which ones were needed. |
+| `wrong` | Different letters, so a different answer. |
+
+An empty or meaningless answer key throws a `TypeError`: that is a content bug, not a learner mistake.
+
+From the command line (exit status 0 for exact or accepted, 1 for wrong, 2 for usage errors):
+
+```sh
+npm run -s pasokh -- 'كتاب' 'کتاب'
+npm run -s pasokh -- --json 'میروم' 'می‌روم'
+```
+
+## What it forgives, and what it does not
+
+| Forgiven | Example | Note code |
+|---|---|---|
+| Presentation and compatibility forms from copied text | U+FB90 KEHEH INITIAL FORM read as ک | `compatibility-forms` |
+| Invisible formatting characters | RLM, zero-width space, BOM | `invisible-marks` |
+| Arabic yeh and alef maksura | ي or ى read as ی | `arabic-yeh` |
+| Arabic kaf | ك read as ک | `arabic-kaf` |
+| Short-vowel marks (harakat, shadda, superscript alef) | کِتاب matches کتاب | `diacritics` |
+| Tatweel | کتـــاب matches کتاب | `tatweel` |
+| Digits by value | Persian ۲۰, Arabic-Indic ٢٠ and 20 | `digits` |
+| Punctuation at the start or end | سلام! matches سلام | `punctuation` |
+| Space, half-space (ZWNJ) or no break | می روم and میروم match می‌روم | `spacing` |
+
+Not forgiven, on purpose:
+
+- **Different letters stay different.** آ and ا, گ and ک, پ and ب, ژ and ز, چ and ج. Merging them would accept a different word.
+- **Punctuation inside the answer** is significant.
+- **Not yet handled:** hamza spelling variants (پائیز and پاییز), the ezafe hamza (خانهٔ), teh marbuta, Latin transliteration (Finglish). Each needs an explicit decision and tests before it becomes a rule.
+
 ## Requirements
 
 Node.js 22.18 or newer. The source is TypeScript run directly by Node (type stripping), so there is no build step.
