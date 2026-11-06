@@ -2,12 +2,23 @@
 import { checkAnswer } from './check.ts';
 
 const USAGE = `usage: pasokh [--json] [--] <typed answer> <accepted answer> [more accepted answers...]
+       pasokh --help
+
+Options:
+  --json  Print the result as JSON.
+  --help  Print this usage text to stdout and exit 0.
+  --      End of options. Every later argument is an answer, even --json, --help or --.
 
 Exit status: 0 exact or accepted, 1 wrong, 2 usage error.`;
 
 function main(argv: readonly string[]): number {
   const delimiter = argv.indexOf('--');
   const optionArgs = delimiter === -1 ? argv : argv.slice(0, delimiter);
+  // Like --json, --help is an option only before the first `--`; after it, "--help" is a literal answer.
+  if (optionArgs.includes('--help')) {
+    process.stdout.write(`${USAGE}\n`);
+    return 0;
+  }
   const json = optionArgs.includes('--json');
   const args = [
     ...optionArgs.filter((arg) => arg !== '--json'),
