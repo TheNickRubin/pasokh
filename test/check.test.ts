@@ -167,6 +167,18 @@ describe('accepted', () => {
 });
 
 describe('answer keys', () => {
+  it('rejects symbol-only and combining-mark-only keys before any match', () => {
+    for (const key of ['💥', '+', '\u0653']) {
+      assert.throws(() => checkAnswer(key, key), TypeError);
+      assert.throws(() => checkAnswer('کتاب', ['کتاب', key]), TypeError);
+    }
+  });
+
+  it('keeps letters and numbers valid after normalization', () => {
+    for (const key of ['کتاب', '20', '\u06F2\u06F0', '\uFB90']) {
+      assert.equal(checkAnswer(key, key).verdict, 'exact');
+    }
+  });
   it('returns an exact match from any position in the key', () => {
     assert.deepEqual(checkAnswer('کتاب', ['کباب', 'کتاب']), { verdict: 'exact', matched: 'کتاب', notes: [] });
   });
