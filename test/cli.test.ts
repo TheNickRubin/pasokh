@@ -13,6 +13,39 @@ function pasokh(...args: string[]) {
 }
 
 describe('cli', () => {
+  it('consumes the first bare delimiter before ordinary operands', () => {
+    const run = pasokh('--', 'X', 'X');
+    assert.equal(run.status, 0);
+    assert.equal(run.stdout, 'verdict: exact\nmatched: X\n');
+    assert.equal(run.stderr, '');
+  });
+  it('preserves literal --json answers after the option delimiter', () => {
+    const run = pasokh('--', '--json', '--json');
+    assert.equal(run.status, 0);
+    assert.equal(run.stdout, 'verdict: exact\nmatched: --json\n');
+    assert.equal(run.stderr, '');
+  });
+
+  it('allows JSON mode before the delimiter with literal option-like answers', () => {
+    const run = pasokh('--json', '--', '--json', '--json');
+    assert.equal(run.status, 0);
+    assert.deepEqual(JSON.parse(run.stdout), { verdict: 'exact', matched: '--json', notes: [] });
+    assert.equal(run.stderr, '');
+  });
+
+  it('preserves later delimiters as literal operands', () => {
+    const run = pasokh('--', '--', '--');
+    assert.equal(run.status, 2);
+    assert.equal(run.stdout, '');
+    assert.match(run.stderr, /^pasokh: answer key entry/);
+  });
+
+  it('still requires two operands after the delimiter', () => {
+    const run = pasokh('--json', '--', '--json');
+    assert.equal(run.status, 2);
+    assert.equal(run.stdout, '');
+    assert.match(run.stderr, /^usage: pasokh/);
+  });
   it('reports a symbol-only key as a content error, not a verdict', () => {
     const run = pasokh('--json', '💥', '💥');
     assert.equal(run.status, 2);
