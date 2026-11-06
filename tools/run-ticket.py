@@ -119,10 +119,14 @@ class Job:
         self.verify_scope()
         return result
 
-    def checks(self, phase: str) -> None:
-        self.run(["npm", "test"], cwd=self.checkout, timeout=120)
-        self.run(["npm", "run", "typecheck"], cwd=self.checkout, timeout=120)
+    def checks(self, phase: str) -> dict[str, str]:
+        tests = self.run(["npm", "test"], cwd=self.checkout, timeout=120)
+        types = self.run(["npm", "run", "typecheck"], cwd=self.checkout, timeout=120)
+        receipts = {"npm test": "\n".join(tests.splitlines()[-12:]),
+                    "npm run typecheck": types.strip() + "\nexit: 0"}
+        self.save(phase + ".checks.json", receipts)
         self.event("checks_passed", phase=phase)
+        return receipts
 
     def publish(self, message: str) -> str:
         changes = self.verify_scope()
@@ -193,12 +197,13 @@ class Job:
             "or external input. Summarize observed checks and limitations, never invent results. "
             "For initial implementation use review_complete=false.\n\nSelected issue:\n" + json.dumps(issue)
         )
-        self.agent(instructions, "implementation")
-        self.checks("implementation")
+        implementation = self.agent(instructions, "implementation")
+        receipts = self.checks("implementation")
         sha = self.publish(f"feat: implement ticket #{self.args.issue}")
         body = (f"Implements {issue['url']}\n\n{issue['body']}\n\n"
-                "## Verification\n\n`npm test` and `npm run typecheck` passed in an isolated worktree. "
-                "The one-shot factory retains command output and acceptance notes locally. "
+                "## Verification\n\n" + implementation["summary"] + "\n\n" +
+                "\n\n".join(f"`{command}`\n\n```text\n{output}\n```" for command, output in receipts.items()) +
+                "\n\nThe one-shot factory retains full command output and acceptance notes locally. "
                 "Qodo review is requested next; completion is not claimed until reviewed.\n\n"
                 "## Assistance\n\nImplemented by Claude Code through the bounded local ticket runner. "
                 "Human review and merge remain required.\n")
