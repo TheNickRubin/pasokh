@@ -38,9 +38,43 @@ pushed for another review. At most two repair cycles are permitted. No merge
 command exists in the runner. A completed run means **ready for human review**,
 never merged, accepted by Nic, or accepted by hackathon judges.
 
+## Resume an existing PR at review
+
+If implementation opened a PR but review was unavailable, resume that original
+run explicitly. Use its original branch, issue number, the PR's current base
+branch, and a **new, separate** evidence directory:
+
+```sh
+python3 tools/run-ticket.py \
+  --resume-run "$HOME/dev/work/pasokh/2026-11-05/day-04-run-01" \
+  --artifacts "$HOME/dev/work/pasokh/2026-11-05/day-04-review-01" \
+  --issue ISSUE_NUMBER \
+  --base CURRENT_PR_BASE \
+  --branch day-04/cli-help \
+  --allow-file src/cli.ts \
+  --allow-file test/cli.test.ts \
+  --allow-file README.md
+```
+
+Resume reads the original ticket and PR-opened event, then verifies the
+registered checkout, remote, clean branch, current PR head, base and open state.
+It fetches the current issue **including comments**, so later acceptance
+clarifications reach the reviewer. It records both the original and current
+ticket in the new evidence directory. After the same one-shot timer fires, it
+validates the checkout and PR again and enters the bounded review loop. It does
+not rerun implementation, install dependencies, create another branch or PR,
+or overwrite original logs. Review fixes edit the original registered checkout
+and push its existing task branch. Keep that checkout stable during the run.
+
+The original run directory must contain exactly one PR-opened event. Resume
+from that original directory, rather than from a review-only continuation.
+Each explicit invocation permits at most two repair cycles; exhausted runs
+require a human decision before another invocation.
+
 ## Bounds and evidence
 
-- One issue and one new `day-04/` branch. No batch ticket selection.
+- One issue and one `day-04/` branch: new for implementation, explicitly reused
+  only in resume mode. No batch ticket selection.
 - One repository lock prevents concurrent runs of this runner. It does not lock
   other editors or Git clients; coordinate with them before launch.
 - Changes outside the explicit source/test/README allowlist stop before commit
@@ -56,6 +90,12 @@ never merged, accepted by Nic, or accepted by hackathon judges.
 - The runner recognizes the listed Qodo bot account names in its source. An
   unknown bot, no response, or a response that cannot establish completed review
   stops for human investigation. A queued or progress message is not success.
+  Known busy responses are polled past. Review evidence must identify the
+  current SHA through GitHub's review commit field or a hidden commit-URL
+  marker. A completed current-head review already present is attributed and
+  reused without a duplicate review request; stale or unattributed comments
+  do not count. Recognized completion is a `Code Review by Qodo` report or a
+  submitted substantive review, followed by the agent's finding assessment.
 - The runner retains the ticket, commands, stdout/stderr, agent prompts and
   structured results, review bodies, timestamps, PR and commit evidence. These
   local logs are not automatically published. Review them before sharing.
@@ -90,6 +130,10 @@ GitHub call runs. These tests reproduced a failure where `BrokenPipeError`
 escaped from the escalation logger before the result was saved. That proves
 the failure mechanism; it does not establish the exact cause of any historical
 run without its process error output. Historical evidence is left intact.
+Additional offline tests cover busy/stale/unattributed review filtering,
+existing current-head review reuse, progress polling, resume mismatches, and
+reuse of the existing checkout/PR with current ticket comments and unchanged
+original evidence. They do not establish that live Qodo or Claude is working.
 
 Only an actual trigger/run and its retained evidence demonstrate the Day 4
 workflow. Writing or syntax-checking this runner alone does not complete the
