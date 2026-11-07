@@ -51,6 +51,12 @@ A change is done when `npm test` and `npm run typecheck` both pass, and the PR d
 - **Where:** every pull request.
 - **Why:** A focused diff gets a focused review, and receipts let a reviewer check claims instead of trusting them.
 
+### 6. Review the Live Revision
+
+- **Rule:** Before automation reports `ready_for_human`, verify that the PR is open and its live head SHA matches the tested commit and a completed, investigated Qodo review explicitly attributed to that SHA. Recheck the live PR after waiting for review and immediately before reporting readiness. If the live head unexpectedly differs from the revision being checked, stop for human help; continuing with a new head requires checks and review for that head. Pending, failed, stale or unattributed review remains incomplete: wait only within the configured limits, then stop for help. A ready result leaves the merge decision to a human.
+- **Where:** Automated PR review/fix workflows and their regression tests. Cover stale review evidence and a PR head changing during a run.
+- **Why:** [Qodo found two ways an old review could clear newer code](https://github.com/TheNickRubin/pasokh/pull/7#issuecomment-6675168248): an updated comment without commit attribution, and a remote PR changing while the local checkout stayed unchanged. Verification receipts are useful only for the revision they actually checked.
+
 ## Review guidance
 
 These matter most here: rules 1 to 4, Unicode correctness (normalization order, code point ranges, regex flags), and whether a test would catch the bug it claims to cover.
